@@ -25,19 +25,19 @@ struct PhoneNumbers {
  * Każdy wierzchołek posiada etykietę (label). Słowo, które odpowiada
  * wierzchołkowi jest konkatenacją wszystkich etykiet na ścieżce od korzenia
  * do tego wierzchołka włącznie. Etykiety rodzeństwa nie mają wspólnych
- * prefiksów.  Rodzeństwo jest posortowane leksykograficznie względem etykiet.
+ * prefiksów. Rodzeństwo jest posortowane leksykograficznie względem etykiet.
  *
  * Każdy wierzchołek może należeć do "cyklu przekierowań". W jednym cyklu
  * przekierowań znajduje się jedno słowo z drzewa "to" (patrz PhoneForward)
  * oraz wszystkie słowa z drzewa "from", które są na nie przekierowane.
  */
 struct RadixTree {
-	/** Wskazuje na lewego brata wierzchołka, jeśli istnieje, lub na rodzica,
-	 * a w przypadku korzenia - na siebie. */
+	/** Wskazuje na lewego brata wierzchołka, jeśli istnieje,
+	 * lub na rodzica, a w przypadku korzenia - na siebie. */
 	struct RadixTree *leftSibling;
 
-	/** Wskazuje na prawego brata wierzchołka, jeśli istnieje, lub na rodzica,
-	 * a w przypadku korzenia - na siebie. */
+	/** Wskazuje na prawego brata wierzchołka, jeśli istnieje,
+	 * lub na rodzica, a w przypadku korzenia - na siebie. */
 	struct RadixTree *rightSibling;
 
 	/** Wskazuje na skrajnie prawe (a więc pierwsze od lewej) dziecko,
@@ -59,12 +59,12 @@ struct RadixTree {
 	/** Etykieta wierzchołka. */
 	char *label;
 
-	/** Pełne słowo odpowiadające wierzchołkowi, jeśli znajduje się on w cyklu
-	 * przekierowań, lub NULL. */
+	/** Pełne słowo odpowiadające wierzchołkowi, jeśli znajduje się on
+	 * w cyklu przekierowań, lub NULL. */
 	char *fullWord;
 
-	/** Odpowiedni wierzchołek z drzewa "to", na który dany wierzchołek z "from"
-	 * jest przekierowany, lub NULL.*/
+	/** Odpowiedni wierzchołek z drzewa "to", na który dany wierzchołek
+	 * z "from" jest przekierowany, lub NULL.*/
 	struct RadixTree *fwd;
 };
 
@@ -95,7 +95,7 @@ typedef struct RadixTree rt;
  * @return Wskaźnik na kopię lub NULL w przypadku błędu alokacji.
  */
 char *
-copy_string (const char *begin, const char *end)
+copyString (const char *begin, const char *end)
 {
 	size_t len = end ? (size_t)(end - begin) : strlen(begin);
 	char *new = malloc(len + 1);
@@ -199,8 +199,8 @@ addAbove (rt *arg, const char* breakpoint)
 	rt *new = makeRT();
 	if (!new) return NULL;
 
-	new->label = copy_string(arg->label, breakpoint);
-	char *argLabel = copy_string(breakpoint, NULL);
+	new->label = copyString(arg->label, breakpoint);
+	char *argLabel = copyString(breakpoint, NULL);
 	if (!new->label || !argLabel) goto alloc_error;
 
 	*fromLeftSibling(arg) = new;
@@ -235,7 +235,7 @@ addLeft(rt *arg, const char *label)
 {
 	rt *new = makeRT();
 	if (!new) return NULL;
-	char *newLabel = copy_string(label, NULL);
+	char *newLabel = copyString(label, NULL);
 	if (!newLabel) {free(new); return NULL;};
 
 	*fromLeftSibling(arg) = new;
@@ -260,7 +260,7 @@ addRight(rt *arg, const char *label)
 {
 	rt *new = makeRT();
 	if (!new) return NULL;
-	char *newLabel = copy_string(label, NULL);
+	char *newLabel = copyString(label, NULL);
 	if (!newLabel) {free(new); return NULL;};
 
 	*fromRightSibling(arg) = new;
@@ -285,7 +285,7 @@ addBelow(rt *arg, const char *label)
 {
 	rt *new = makeRT();
 	if (!new) return NULL;
-	char *newLabel = copy_string(label, NULL);
+	char *newLabel = copyString(label, NULL);
 	if (!newLabel) {free(new); return NULL;};
 
 	new->leftSibling = new->rightSibling = arg;
@@ -379,15 +379,15 @@ removeFromTree(rt *arg) {
  *
  * @param arg Dany wierzchołek;
  */
-static inline bool is_root (rt *arg) {return arg->leftSibling == arg;}
+static inline bool isRoot (rt *arg) {return arg->leftSibling == arg;}
 
 /**
  * @brief Zwraca rodzica podanego wierzchołka, o ile jest on skrajnym dzieckiem.
  *
  * @param arg Podany wierzchołek.
  *
- * @return Rodzic @p arg, jeśli @p arg jest skrajnym dzieckiem i nie jest korzeniem.
- * W przeciwnym razie NULL.
+ * @return Rodzic @p arg, jeśli @p arg jest skrajnym dzieckiem
+ * i nie jest korzeniem. W przeciwnym razie NULL.
  */
 rt *
 getParent (rt *arg)
@@ -413,7 +413,7 @@ getParent (rt *arg)
 void
 cleanup (rt* arg)
 {
-	if (is_root(arg) || arg->leftRev != arg)
+	if (isRoot(arg) || arg->leftRev != arg)
 		return;
 	if (arg->fullWord) {
 		free(arg->fullWord);
@@ -601,7 +601,7 @@ makeSorter(const char *key)
 	if (!sorter->label) {free(sorter); return NULL;}
 	rt *k = addKey (sorter, key);
 	if (!k) {deleteRec(sorter); return NULL;}
-	k->fullWord = copy_string(key, NULL);
+	k->fullWord = copyString(key, NULL);
 	if (!k->fullWord) {deleteRec(sorter); return NULL;}
 	return sorter;
 }
@@ -679,15 +679,15 @@ void phfwdDelete(struct PhoneForward *arg)
 bool
 phfwdAdd(struct PhoneForward *arg, char const *num1, char const *num2)
 {
-	if (!arg || !isNumber(num1) || !isNumber(num2) || strcmp(num1, num2) == 0)
+	if (!arg || !isNumber(num1) || !isNumber(num2) || !strcmp(num1, num2))
 		return false;
 	rt *key1 = addKey(arg->from, num1);
 	rt *key2 = addKey(arg->to, num2);
 	if (!key1 || !key2) return false;
 	if (key1->fwd == key2) return true;
 
-	if (!key1->fullWord) key1->fullWord = copy_string(num1, NULL);
-	if (!key2->fullWord) key2->fullWord = copy_string(num2, NULL);
+	if (!key1->fullWord) key1->fullWord = copyString(num1, NULL);
+	if (!key2->fullWord) key2->fullWord = copyString(num2, NULL);
 	if (!key1->fullWord || !key2->fullWord) return false;
 
 	rt *oldFwd = key1->fwd;
