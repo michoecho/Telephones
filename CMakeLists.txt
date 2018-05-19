@@ -23,6 +23,8 @@ set(CMAKE_C_FLAGS "-std=c11 -Wall -Wextra")
 set(SOURCE_FILES
     src/phone_forward.c
     src/phone_forward.h
+    src/symbol_table.c
+    src/symbol_table.h
     src/phone_forward_example.c)
 
 # Wskazujemy plik wykonywalny.
