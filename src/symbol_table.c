@@ -303,3 +303,12 @@ removeMapping (rt* arg, const char *key)
 	target->value = NULL;
 	cleanup(target);
 }
+
+void
+iter (SymbolTable* arg, void (*f)(void*))
+{
+	for (rt *c = arg->rightChild; c != arg; c = c->rightSibling)
+		iter(c, f);
+	if (arg->value)
+		f(arg->value);
+}
