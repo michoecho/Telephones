@@ -23,7 +23,7 @@ size_t discardComment(int *error) {
 size_t extractWord(char **out, int (*class)(int)) {
 	int c;
 	size_t count = 0;
-	size_t cap = 16;
+	size_t cap = 1024;
 	char *buffer = malloc(cap);
 	if (!buffer) {*out = NULL; return count;}
 	while (true) {
@@ -42,22 +42,22 @@ size_t extractWord(char **out, int (*class)(int)) {
 	return count;
 }
 
-size_t getToken(struct token *out) {
+void getToken(struct token *out, size_t *count) {
 	int c;
-	size_t count = 0;
 	while (true) {
-		c = getchar(); ++count;
+		c = getchar(); ++*count;
 		if (isspace(c)) {
 			continue;
 		} else if (c == '$') {
+			out->beg = *count;
 			int error = 0;
-			count += discardComment(&error);
-			if (!!error) {out->type = SYNTAX_ERROR; return count;}
+			*count += discardComment(&error);
+			if (error) {out->type = SYNTAX_ERROR; return;}
 		} else {
 			break;
 		}
 	}
-	out->beg = count;	
+	out->beg = *count;
 	if (c == EOF) {
 		out->type = END;
 	} else if (c == '>') {
@@ -65,13 +65,13 @@ size_t getToken(struct token *out) {
 	} else if (c == '?') {
 		out->type = OP_QUERY;
 	} else if (isdigit(c)) {
-		--count; ungetc(c, stdin);
-		count += extractWord(&out->string, isdigit);
+		--*count; ungetc(c, stdin);
+		*count += extractWord(&out->string, isdigit);
 		out->type = out->string ? NUMBER : OOM;
-		return count;
+		return;
 	} else if (isalpha(c)) {
-		--count; ungetc(c, stdin);
-		count += extractWord(&out->string, isalnum);
+		--*count; ungetc(c, stdin);
+		*count += extractWord(&out->string, isalnum);
 		if (!out->string) {
 			out->type = OOM;
 		} else if (!strcmp("NEW", out->string)) {
@@ -83,9 +83,9 @@ size_t getToken(struct token *out) {
 		} else {
 			out->type = IDENT;
 		}
-		return count;
+		return;
 	} else {
 		out->type = SYNTAX_ERROR;
 	}
-	return count;
+	return;
 }

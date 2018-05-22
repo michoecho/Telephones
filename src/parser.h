@@ -20,6 +20,6 @@ struct token {
 	size_t beg;
 };
 
-size_t getToken(struct token *out);
+void getToken(struct token *out, size_t *count);
 
 #endif

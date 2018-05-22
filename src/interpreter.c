@@ -15,6 +15,21 @@ enum commandType {
 	SYNTAX_ERROR_CMD
 };
 
+char *
+get_op_name(enum commandType t)
+{
+	switch (t) {
+	case ADD_BASE: return "NEW";
+	case DEL_BASE:
+	case DEL_FWD: return "DEL";
+	case QUERY_FWD:
+	case QUERY_REV: return "?";
+	case ADD_FWD: return ">";
+	default: return "";
+	}
+}
+
+
 struct command {
 	enum commandType type;
 	char *operand1;
@@ -22,28 +37,28 @@ struct command {
 	size_t op_offset;
 };
 
-size_t getCommand (struct command *out) {
-	size_t count = 0;
+void getCommand (struct command *out, size_t *count) {
 	struct token t;
 	struct token t2;
 	struct token t3;
-	count += getToken(&t);
+	getToken(&t, count);
 	switch (t.type) {
 	case END: out->type = END_CMD; break;
 	case OP_NEW:
 		out->op_offset = t.beg;
-		count += getToken(&t2);
+		getToken(&t2, count);
 		if (t2.type == IDENT) {
 			out->type = ADD_BASE;
 			out->operand1 = t2.string;
 		} else {
 			out->type = SYNTAX_ERROR_CMD;
-			return t2.beg;
+			out->op_offset = t2.beg;
+			return;
 		}
 		break;
 	case OP_DEL:
 		out->op_offset = t.beg;
-		count += getToken(&t2);
+		getToken(&t2, count);
 		if (t2.type == IDENT) {
 			out->type = DEL_BASE;
 			out->operand1 = t2.string;
@@ -52,50 +67,54 @@ size_t getCommand (struct command *out) {
 			out->operand1 = t2.string;
 		} else {
 			out->type = SYNTAX_ERROR_CMD;
-			return t2.beg;
+			out->op_offset = t2.beg;
+			return;
 		}
 		break;
 	case OP_QUERY:
 		out->op_offset = t.beg;
-		count += getToken(&t2);
+		getToken(&t2, count);
 		if (t2.type == NUMBER) {
 			out->type = QUERY_REV;
 			out->operand1 = t2.string;
 		} else {
 			out->type = SYNTAX_ERROR_CMD;
-			return t2.beg;
+			out->op_offset = t2.beg;
+			return;
 		}
 		break;
 	case NUMBER:;
-		size_t oldcount = count;
-		count += getToken(&t2);
-		out->op_offset = oldcount + t2.beg;
+		getToken(&t2, count);
+		out->op_offset = t2.beg;
 		if (t2.type == OP_REDIR) {
-			count += getToken(&t3);
+			getToken(&t3, count);
 			if (t3.type == NUMBER) {
 				out->type = ADD_FWD;
 				out->operand1 = t.string;
 				out->operand2 = t3.string;
 			} else {
 				out->type = SYNTAX_ERROR_CMD;
-				return t3.beg;
+				out->op_offset = t3.beg;
+				return;
 			}
 		} else if (t2.type == OP_QUERY) {
 			out->type = QUERY_FWD;
 			out->operand1 = t.string;
 		} else {
 			out->type = SYNTAX_ERROR_CMD;
-			return t2.beg;
+			out->op_offset = t2.beg;
+			return;
 		}
 		break;
 	case OOM:
 		out->type = OOM_CMD;
-		return count;
+		return;
 	default:
 		out->type = SYNTAX_ERROR_CMD;
-		return t.beg;
+		out->op_offset = t.beg;
+		return;
 	}
-	return count;
+	return;
 }
 
 static void
@@ -104,25 +123,38 @@ deleteBase(void *p)
 	phfwdDelete(p);
 }
 
+#define SUCCESS 0
+#define SYNTAX_ERROR 1
+#define EXEC_ERROR 2
+
 int main()
 {
 	size_t count = 0;
 	SymbolTable *table = newTable();
-	struct PhoneForward *current;
-	const struct PhoneNumbers *pn;
+	if (!table) { fprintf(stderr, "ERROR OOM\n"); return 1; }
+	struct PhoneForward *current = NULL;
+	int return_status = -1;
 	while (true) {
-		struct command cmd;
-		size_t oldcount = count;
-		count += getCommand(&cmd);
-		switch (cmd.type) {
-		case ADD_BASE:
+		const struct PhoneNumbers *pn = NULL;
+		struct command cmd = {.operand1 = NULL, .operand2 = NULL};
+
+		getCommand(&cmd, &count);
+		if (cmd.type == END_CMD) {
+			return_status = SUCCESS;
+		} else if (cmd.type == OOM_CMD) {
+			return_status = EXEC_ERROR;
+		} else if (cmd.type == SYNTAX_ERROR_CMD) {
+			return_status = 1;
+		} else if (cmd.type == ADD_BASE) {
 			current = getMapping(table, cmd.operand1);
-			if (!current)
+			if (!current) {
 				current = phfwdNew();
-				addMapping(table, cmd.operand1, current);
-			free(cmd.operand1);
-			break;
-		case DEL_BASE:;
+				if (!current || !addMapping(table, cmd.operand1, current)) {
+					free(current);
+					return_status = EXEC_ERROR;
+				}
+			}
+		} else if (cmd.type == DEL_BASE) {
 			struct PhoneForward *target = getMapping(table, cmd.operand1);
 			if (target == current)
 				current = NULL;
@@ -130,57 +162,50 @@ int main()
 				phfwdDelete(target);
 				removeMapping(table, cmd.operand1);
 			} else {
-				fprintf(stderr, "ERROR DEL %d\n", oldcount + cmd.op_offset);
-				free(cmd.operand1);
-				goto error_cleanup;
+				return_status = EXEC_ERROR;
 			}
-			free(cmd.operand1);
-			break;
-		case ADD_FWD:
-			if (current)
-				phfwdAdd(current, cmd.operand1, cmd.operand2);
-			free(cmd.operand1);
-			free(cmd.operand2);
-			break;
-		case DEL_FWD:
-			if (current)
+		} else if (!current) {
+			return_status = EXEC_ERROR;
+		} else if (cmd.type == ADD_FWD) {
+			if (!phfwdAdd(current, cmd.operand1, cmd.operand2))
+				return_status = EXEC_ERROR;
+		} else if (cmd.type == DEL_FWD) {
 				phfwdRemove(current, cmd.operand1);
-			free(cmd.operand1);
-			break;
-		case QUERY_FWD:
-			if (!current) break;
-			pn = phfwdGet(current, cmd.operand1);
-			printf("%s\n", phnumGet(pn, 0));
-			phnumDelete(pn);
-			free(cmd.operand1);
-			break;
-		case QUERY_REV:
-			if (!current) break;
+		} else if (cmd.type == QUERY_FWD) {
+				pn = phfwdGet(current, cmd.operand1);
+				const char *num = phnumGet(pn, 0);
+				if (num)
+					printf("%s\n", num);
+				else
+					return_status = EXEC_ERROR;
+		} else if (cmd.type == QUERY_REV) {
 			pn = phfwdReverse(current, cmd.operand1);
-			const char *num;
-			for (int i = 0; (num = phnumGet(pn, i)); ++i)
-				printf("%s\n", num);
-			phnumDelete(pn);
-			free(cmd.operand1);
+			const char *num = phnumGet(pn, 0);
+			if (num) {
+				for (int i = 0; (num = phnumGet(pn, i)); ++i)
+					printf("%s\n", num);
+			} else {
+				return_status = EXEC_ERROR;
+			}
+		}	
+		free(cmd.operand1);
+		free(cmd.operand2);
+		phnumDelete(pn);
+		if (return_status == SUCCESS) {
 			break;
-		case END_CMD:
-			goto success_cleanup;
-		case OOM_CMD:
-			goto error_cleanup;
-		case SYNTAX_ERROR_CMD:
+		} else if (return_status == SYNTAX_ERROR) {
 			if (feof(stdin))
 				fprintf(stderr, "ERROR EOF\n");
-			else 
-				fprintf(stderr, "ERROR %d\n", count);
-			goto error_cleanup;
+			else
+				fprintf(stderr, "ERROR %ld\n", cmd.op_offset);
+			break;
+		} else if (return_status == EXEC_ERROR) {
+			fprintf(stderr, "ERROR %s %ld\n", get_op_name(cmd.type),
+					cmd.op_offset);
+			break;
 		}
 	}
-success_cleanup:
 	iter(table, deleteBase);
 	deleteTable(table);
-	return 0;
-error_cleanup:
-	iter(table, deleteBase);
-	deleteTable(table);
-	return 1;
+	return !!return_status;
 }
