@@ -42,14 +42,16 @@ void getCommand (struct command *out, size_t *count) {
 	struct token t2;
 	struct token t3;
 	getToken(&t, count);
+	out->operand1 = t.string;
+	out->operand2 = NULL;
 	switch (t.type) {
 	case END: out->type = END_CMD; break;
 	case OP_NEW:
 		out->op_offset = t.beg;
 		getToken(&t2, count);
+		out->operand1 = t2.string;
 		if (t2.type == IDENT) {
 			out->type = ADD_BASE;
-			out->operand1 = t2.string;
 		} else {
 			out->type = SYNTAX_ERROR_CMD;
 			out->op_offset = t2.beg;
@@ -59,12 +61,11 @@ void getCommand (struct command *out, size_t *count) {
 	case OP_DEL:
 		out->op_offset = t.beg;
 		getToken(&t2, count);
+		out->operand1 = t2.string;
 		if (t2.type == IDENT) {
 			out->type = DEL_BASE;
-			out->operand1 = t2.string;
 		} else if (t2.type == NUMBER) {
 			out->type = DEL_FWD;
-			out->operand1 = t2.string;
 		} else {
 			out->type = SYNTAX_ERROR_CMD;
 			out->op_offset = t2.beg;
@@ -74,24 +75,23 @@ void getCommand (struct command *out, size_t *count) {
 	case OP_QUERY:
 		out->op_offset = t.beg;
 		getToken(&t2, count);
+		out->operand1 = t2.string;
 		if (t2.type == NUMBER) {
 			out->type = QUERY_REV;
-			out->operand1 = t2.string;
 		} else {
 			out->type = SYNTAX_ERROR_CMD;
 			out->op_offset = t2.beg;
 			return;
 		}
 		break;
-	case NUMBER:;
+	case NUMBER:
 		getToken(&t2, count);
 		out->op_offset = t2.beg;
 		if (t2.type == OP_REDIR) {
 			getToken(&t3, count);
+			out->operand2 = t3.string;
 			if (t3.type == NUMBER) {
 				out->type = ADD_FWD;
-				out->operand1 = t.string;
-				out->operand2 = t3.string;
 			} else {
 				out->type = SYNTAX_ERROR_CMD;
 				out->op_offset = t3.beg;
@@ -101,6 +101,7 @@ void getCommand (struct command *out, size_t *count) {
 			out->type = QUERY_FWD;
 			out->operand1 = t.string;
 		} else {
+			out->operand2 = t2.string;
 			out->type = SYNTAX_ERROR_CMD;
 			out->op_offset = t2.beg;
 			return;

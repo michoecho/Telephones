@@ -37,6 +37,7 @@ size_t extractWord(char **out, int (*class)(int)) {
 		}
 	}
 	if (c != EOF) ungetc(c, stdin);
+	else clearerr(stdin);
 	buffer[count] = '\0';
 	*out = buffer;
 	return count;
@@ -44,6 +45,7 @@ size_t extractWord(char **out, int (*class)(int)) {
 
 void getToken(struct token *out, size_t *count) {
 	int c;
+	out->string = NULL;
 	while (true) {
 		c = getchar(); ++*count;
 		if (isspace(c)) {
@@ -77,9 +79,11 @@ void getToken(struct token *out, size_t *count) {
 		} else if (!strcmp("NEW", out->string)) {
 			out->type = OP_NEW;
 			free(out->string);
+			out->string = NULL;
 		} else if (!strcmp("DEL", out->string)) {
 			out->type = OP_DEL;
 			free(out->string);
+			out->string = NULL;
 		} else {
 			out->type = IDENT;
 		}
