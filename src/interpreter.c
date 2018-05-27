@@ -4,27 +4,28 @@
 #include "symbol_table.h"
 
 enum commandType {
-	ADD_BASE,
-	DEL_BASE,
-	ADD_FWD,
-	DEL_FWD,
-	QUERY_FWD,
-	QUERY_REV,
-	END_CMD,
-	OOM_CMD,
-	SYNTAX_ERROR_CMD
+	SWITCH,
+	DELETE,
+	ADD,
+	REMOVE,
+	GET,
+	REV,
+	END,
+	OOM_ERROR,
+	EOF_ERROR,
+	SYNTAX_ERROR
 };
 
 char *
 get_op_name(enum commandType t)
 {
 	switch (t) {
-	case ADD_BASE: return "NEW";
-	case DEL_BASE:
-	case DEL_FWD: return "DEL";
-	case QUERY_FWD:
-	case QUERY_REV: return "?";
-	case ADD_FWD: return ">";
+	case SWITCH: return "NEW";
+	case DELETE:
+	case REMOVE: return "DEL";
+	case GET:
+	case REV: return "?";
+	case ADD: return ">";
 	default: return "";
 	}
 }
@@ -45,17 +46,16 @@ void getCommand (struct command *out, size_t *count) {
 	out->operand1 = t.string;
 	out->operand2 = NULL;
 	switch (t.type) {
-	case END: out->type = END_CMD; break;
+	case EOF_TOKEN: out->type = END; break;
 	case OP_NEW:
 		out->op_offset = t.beg;
 		getToken(&t2, count);
 		out->operand1 = t2.string;
 		if (t2.type == IDENT) {
-			out->type = ADD_BASE;
+			out->type = SWITCH;
 		} else {
-			out->type = SYNTAX_ERROR_CMD;
+			out->type = SYNTAX_ERROR;
 			out->op_offset = t2.beg;
-			return;
 		}
 		break;
 	case OP_DEL:
@@ -63,13 +63,12 @@ void getCommand (struct command *out, size_t *count) {
 		getToken(&t2, count);
 		out->operand1 = t2.string;
 		if (t2.type == IDENT) {
-			out->type = DEL_BASE;
+			out->type = DELETE;
 		} else if (t2.type == NUMBER) {
-			out->type = DEL_FWD;
+			out->type = REMOVE;
 		} else {
-			out->type = SYNTAX_ERROR_CMD;
+			out->type = SYNTAX_ERROR;
 			out->op_offset = t2.beg;
-			return;
 		}
 		break;
 	case OP_QUERY:
@@ -77,11 +76,10 @@ void getCommand (struct command *out, size_t *count) {
 		getToken(&t2, count);
 		out->operand1 = t2.string;
 		if (t2.type == NUMBER) {
-			out->type = QUERY_REV;
+			out->type = REV;
 		} else {
-			out->type = SYNTAX_ERROR_CMD;
+			out->type = SYNTAX_ERROR;
 			out->op_offset = t2.beg;
-			return;
 		}
 		break;
 	case NUMBER:
@@ -91,29 +89,27 @@ void getCommand (struct command *out, size_t *count) {
 			getToken(&t3, count);
 			out->operand2 = t3.string;
 			if (t3.type == NUMBER) {
-				out->type = ADD_FWD;
+				out->type = ADD;
 			} else {
-				out->type = SYNTAX_ERROR_CMD;
+				out->type = SYNTAX_ERROR;
 				out->op_offset = t3.beg;
-				return;
 			}
 		} else if (t2.type == OP_QUERY) {
-			out->type = QUERY_FWD;
+			out->type = GET;
 			out->operand1 = t.string;
 		} else {
 			out->operand2 = t2.string;
-			out->type = SYNTAX_ERROR_CMD;
+			out->type = SYNTAX_ERROR;
 			out->op_offset = t2.beg;
-			return;
 		}
 		break;
-	case OOM:
-		out->type = OOM_CMD;
-		return;
+	case OOM_TOKEN:
+		out->type = OOM_ERROR;
+		break;
 	default:
-		out->type = SYNTAX_ERROR_CMD;
+		out->type = SYNTAX_ERROR;
 		out->op_offset = t.beg;
-		return;
+		break;
 	}
 	return;
 }
@@ -124,38 +120,41 @@ deleteBase(void *p)
 	phfwdDelete(p);
 }
 
-#define SUCCESS 0
-#define SYNTAX_ERROR 1
-#define EXEC_ERROR 2
+enum status {
+	RUNNING = 0,
+	SUCCESS,
+	ERROR,
+};
 
 int main()
 {
-	size_t count = 0;
 	SymbolTable *table = newTable();
-	if (!table) { fprintf(stderr, "ERROR OOM\n"); return 1; }
 	struct PhoneForward *current = NULL;
-	int return_status = -1;
-	while (true) {
+	enum status status = RUNNING;
+	size_t count = 0;
+	struct command cmd;
+
+	if (!table) {cmd.type = OOM_ERROR; status = ERROR;}
+	while (status == RUNNING) {
 		const struct PhoneNumbers *pn = NULL;
-		struct command cmd = {.operand1 = NULL, .operand2 = NULL};
 
 		getCommand(&cmd, &count);
-		if (cmd.type == END_CMD) {
-			return_status = SUCCESS;
-		} else if (cmd.type == OOM_CMD) {
-			return_status = EXEC_ERROR;
-		} else if (cmd.type == SYNTAX_ERROR_CMD) {
-			return_status = 1;
-		} else if (cmd.type == ADD_BASE) {
+		if (cmd.type == END) {
+			status = SUCCESS;
+		} else if (cmd.type == OOM_ERROR) {
+			status = ERROR;
+		} else if (cmd.type == SYNTAX_ERROR) {
+			status = ERROR;
+		} else if (cmd.type == SWITCH) {
 			current = getMapping(table, cmd.operand1);
 			if (!current) {
 				current = phfwdNew();
 				if (!current || !addMapping(table, cmd.operand1, current)) {
 					free(current);
-					return_status = EXEC_ERROR;
+					status = ERROR;
 				}
 			}
-		} else if (cmd.type == DEL_BASE) {
+		} else if (cmd.type == DELETE) {
 			struct PhoneForward *target = getMapping(table, cmd.operand1);
 			if (target == current)
 				current = NULL;
@@ -163,50 +162,49 @@ int main()
 				phfwdDelete(target);
 				removeMapping(table, cmd.operand1);
 			} else {
-				return_status = EXEC_ERROR;
+				status = ERROR;
 			}
 		} else if (!current) {
-			return_status = EXEC_ERROR;
-		} else if (cmd.type == ADD_FWD) {
+			status = ERROR;
+		} else if (cmd.type == ADD) {
 			if (!phfwdAdd(current, cmd.operand1, cmd.operand2))
-				return_status = EXEC_ERROR;
-		} else if (cmd.type == DEL_FWD) {
+				status = ERROR;
+		} else if (cmd.type == REMOVE) {
 				phfwdRemove(current, cmd.operand1);
-		} else if (cmd.type == QUERY_FWD) {
+		} else if (cmd.type == GET) {
 				pn = phfwdGet(current, cmd.operand1);
 				const char *num = phnumGet(pn, 0);
 				if (num)
-					printf("%s\n", num);
+					puts(num);
 				else
-					return_status = EXEC_ERROR;
-		} else if (cmd.type == QUERY_REV) {
+					status = ERROR;
+		} else if (cmd.type == REV) {
 			pn = phfwdReverse(current, cmd.operand1);
 			const char *num = phnumGet(pn, 0);
 			if (num) {
 				for (int i = 0; (num = phnumGet(pn, i)); ++i)
-					printf("%s\n", num);
+					puts(num);
 			} else {
-				return_status = EXEC_ERROR;
+				status = ERROR;
 			}
 		}	
 		free(cmd.operand1);
 		free(cmd.operand2);
 		phnumDelete(pn);
-		if (return_status == SUCCESS) {
-			break;
-		} else if (return_status == SYNTAX_ERROR) {
-			if (feof(stdin))
-				fprintf(stderr, "ERROR EOF\n");
-			else
-				fprintf(stderr, "ERROR %ld\n", cmd.op_offset);
-			break;
-		} else if (return_status == EXEC_ERROR) {
+	}
+	if (status == ERROR) {
+		if (cmd.type == OOM_ERROR) {
+			fprintf(stderr, "ERROR OOM\n");
+		} else if (feof(stdin)) {
+			fprintf(stderr, "ERROR EOF\n");
+		} else if (cmd.type == SYNTAX_ERROR) {
+			fprintf(stderr, "ERROR %ld\n", cmd.op_offset);
+		} else {
 			fprintf(stderr, "ERROR %s %ld\n", get_op_name(cmd.type),
 					cmd.op_offset);
-			break;
 		}
 	}
 	iter(table, deleteBase);
 	deleteTable(table);
-	return !!return_status;
+	return !!status;
 }

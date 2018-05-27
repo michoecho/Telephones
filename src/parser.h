@@ -9,9 +9,9 @@ enum tokenType {
 	OP_REDIR,
 	IDENT,
 	NUMBER,
-	END,
-	OOM,
-	SYNTAX_ERROR,
+	UNKNOWN,
+	EOF_TOKEN,
+	OOM_TOKEN
 };
 
 struct token {
