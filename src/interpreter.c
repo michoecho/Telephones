@@ -121,8 +121,8 @@ deleteBase(void *p)
 }
 
 enum status {
-	RUNNING = 0,
-	SUCCESS,
+	SUCCESS = 0,
+	RUNNING,
 	ERROR,
 };
 
