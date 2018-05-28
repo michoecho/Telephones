@@ -1,22 +1,39 @@
+/** @file
+ * Implementacja interpretera języka opisanego w treści zadania.
+ *
+ * @author Michał Chojnowski <mc394134@students.mimuw.edu.pl>
+ * @copyright Michał Chojnowski
+ * @date 28.05.2018
+ */
+
 #include <stdio.h>
 #include "scanner.h"
 #include "phone_forward.h"
 #include "symbol_table.h"
 
+/**
+ * Typ polecenia do wykonania przez interpreter.
+ */
 enum commandType {
-	SWITCH,
-	DELETE,
-	ADD,
-	REMOVE,
-	GET,
-	REV,
-	END,
-	OOM_ERROR,
-	EOF_ERROR,
-	SYNTAX_ERROR
+	SWITCH, ///< Zmiana (i ew. utworzenie poprzez phfwdNew()) obecnej bazy.
+	DELETE, ///< Usunięcie bazy.
+	ADD, ///< Wywołanie phfwdAdd().
+	REMOVE, ///< Wywołanie phfwdRemove().
+	GET, ///< Wywołanie phfwdGet() i wypisanie wyniku.
+	REV, ///< Wywołanie phfwdReverse() i wypisanie wyniku.
+	END, ///< Brak dalszych poleceń. Zakończenie programu.
+	OOM_ERROR, ///< Błąd alokacji wewnątrz parsera lub skanera.
+	EOF_ERROR, ///< Nieoczekiwany koniec danych.
+	SYNTAX_ERROR ///< Błąd składniowy.
 };
 
 static char *
+/** @brief Zwraca nazwę operatora odpowiadającego typowi polecenia @p t.
+ *
+ * @param t Typ danego polecenia.
+ * @return Nazwa operatora lub pusty string,
+ * jeśli podany typ polecenia nie odpowiada żadnemu operatorowi.
+ */
 get_op_name(enum commandType t)
 {
 	switch (t) {
@@ -30,15 +47,30 @@ get_op_name(enum commandType t)
 	}
 }
 
-
+/**
+ * Struktura opisująca polecenie języka.
+ */
 struct command {
-	enum commandType type;
-	char *operand1;
-	char *operand2;
+	enum commandType type; ///< Typ polecenia.
+	char *operand1; ///< Pierwszy argument polecenia.
+	char *operand2; ///< Drugi argument, lub NULL dla poleceń jednoargumentowych.
+
+	/** Indeks pierwszego znaku operatora polecenia.
+	 * Dla END, EOF_ERROR, OOM_ERROR: nieokreślone.
+	 * Dla SYNTAX_ERROR: indeks pierwszego znaku błędnego tokenu.
+	 */
 	size_t op_offset;
 };
 
 static void
+/**
+ * @brief Generuje polecenie z tokenów wczytywanych przez getToken().
+ * Zwiększa @p count o liczbę wczytanych znaków. Wczytuje tylko te znaki,
+ * które należą do polecenia.
+ *
+ * @param[out] out Zwracane polecenie.
+ * @param[out] count Wskaźnik na licznik wczytanych znaków.
+ */
 getCommand (struct command *out, size_t *count)
 {
 	struct token t;
@@ -116,18 +148,29 @@ getCommand (struct command *out, size_t *count)
 	return;
 }
 
+/**
+ * @brief Usuwa bazę. Wrapper na phfwdDelete().
+ *
+ * @param p Usuwana baza.
+ */
 static void
 deleteBase(void *p)
 {
 	phfwdDelete(p);
 }
 
+/**
+ * Stan programu.
+ */
 enum status {
-	SUCCESS = 0,
-	RUNNING,
-	ERROR,
+	SUCCESS = 0, ///< Wykonanie programu zakończyło się bez błędów.
+	RUNNING, ///< Program wciąż trwa.
+	ERROR, ///< Wykonanie programu zakończyło się błędem.
 };
 
+/**
+ * Główna pętla interpretera.
+ */
 int main()
 {
 	SymbolTable *table = newSymbolTable();
