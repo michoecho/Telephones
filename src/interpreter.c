@@ -1,5 +1,5 @@
 #include <stdio.h>
-#include "parser.h"
+#include "scanner.h"
 #include "phone_forward.h"
 #include "symbol_table.h"
 
@@ -16,7 +16,7 @@ enum commandType {
 	SYNTAX_ERROR
 };
 
-char *
+static char *
 get_op_name(enum commandType t)
 {
 	switch (t) {
@@ -38,7 +38,9 @@ struct command {
 	size_t op_offset;
 };
 
-void getCommand (struct command *out, size_t *count) {
+static void
+getCommand (struct command *out, size_t *count)
+{
 	struct token t;
 	struct token t2;
 	struct token t3;
@@ -128,7 +130,7 @@ enum status {
 
 int main()
 {
-	SymbolTable *table = newTable();
+	SymbolTable *table = newSymbolTable();
 	struct PhoneForward *current = NULL;
 	enum status status = RUNNING;
 	size_t count = 0;
@@ -146,21 +148,21 @@ int main()
 		} else if (cmd.type == SYNTAX_ERROR) {
 			status = ERROR;
 		} else if (cmd.type == SWITCH) {
-			current = getMapping(table, cmd.operand1);
+			current = getSymbol(table, cmd.operand1);
 			if (!current) {
 				current = phfwdNew();
-				if (!current || !addMapping(table, cmd.operand1, current)) {
+				if (!current || !addSymbol(table, cmd.operand1, current)) {
 					free(current);
 					status = ERROR;
 				}
 			}
 		} else if (cmd.type == DELETE) {
-			struct PhoneForward *target = getMapping(table, cmd.operand1);
+			struct PhoneForward *target = getSymbol(table, cmd.operand1);
 			if (target == current)
 				current = NULL;
 			if (target) {
 				phfwdDelete(target);
-				removeMapping(table, cmd.operand1);
+				removeSymbol(table, cmd.operand1);
 			} else {
 				status = ERROR;
 			}
@@ -204,7 +206,7 @@ int main()
 					cmd.op_offset);
 		}
 	}
-	iter(table, deleteBase);
-	deleteTable(table);
+	iterSymbols(table, deleteBase);
+	deleteSymbolTable(table);
 	return !!status;
 }

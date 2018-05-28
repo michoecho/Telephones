@@ -3,7 +3,7 @@
 #include <string.h>
 #include <stdbool.h>
 #include <ctype.h>
-#include "parser.h"
+#include "scanner.h"
 
 size_t discardComment(int *error) {
 	size_t count = 0;

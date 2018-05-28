@@ -25,7 +25,9 @@ set(SOURCE_FILES
     src/phone_forward.h
     src/symbol_table.c
     src/symbol_table.h
-    src/phone_forward_example.c)
+    src/scanner.c
+    src/scanner.h
+    src/interpreter.c)
 
 # Wskazujemy plik wykonywalny.
 add_executable(phone_forward ${SOURCE_FILES})

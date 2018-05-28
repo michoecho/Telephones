@@ -258,7 +258,7 @@ getExact (rt* arg, const char *key)
 }
 
 rt *
-newTable (void)
+newSymbolTable (void)
 {
 	rt *new = makeRT();
 	if (!new) return NULL;
@@ -268,11 +268,11 @@ newTable (void)
 }
 
 void
-deleteTable (rt *arg)
+deleteSymbolTable (rt *arg)
 {
 	for (rt *c = arg->rightChild; c != arg;) {
 		rt *tmp = c->rightSibling;
-		deleteTable(c);
+		deleteSymbolTable(c);
 		c = tmp;
 	}
 	free(arg->label);
@@ -280,7 +280,7 @@ deleteTable (rt *arg)
 }
 
 bool
-addMapping (rt *arg, const char *key, void *value)
+addSymbol (rt *arg, const char *key, void *value)
 {
 	rt *target = addKey(arg, key);
 	if (!target) return false;
@@ -289,14 +289,14 @@ addMapping (rt *arg, const char *key, void *value)
 }
 
 void *
-getMapping (rt *arg, const char *key)
+getSymbol (rt *arg, const char *key)
 {
 	rt *target = getExact(arg, key);
 	return target ? target->value : NULL;
 }
 
 void
-removeMapping (rt* arg, const char *key)
+removeSymbol (rt* arg, const char *key)
 {
 	rt *target = getExact(arg, key);
 	if (!target) return;
@@ -305,10 +305,10 @@ removeMapping (rt* arg, const char *key)
 }
 
 void
-iter (SymbolTable* arg, void (*f)(void*))
+iterSymbols (SymbolTable* arg, void (*f)(void*))
 {
 	for (rt *c = arg->rightChild; c != arg; c = c->rightSibling)
-		iter(c, f);
+		iterSymbols(c, f);
 	if (arg->value)
 		f(arg->value);
 }
