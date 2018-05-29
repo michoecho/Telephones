@@ -99,6 +99,8 @@ getToken(struct token *out, size_t *count)
 		out->type = OP_REDIR;
 	} else if (c == '?') {
 		out->type = OP_QUERY;
+	} else if (c == '@') {
+		out->type = OP_COUNT;
 	} else if (isdigit(c)) {
 		--*count; ungetc(c, stdin);
 		out->string = extractWord(isdigit, count);

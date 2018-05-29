@@ -14,10 +14,11 @@
  * Rodzaj tokenu.
  */
 enum tokenType {
-	OP_NEW, ///< "NEW".
-	OP_DEL, ///< "DEL".
+	OP_NEW, ///< "NEW"
+	OP_DEL, ///< "DEL"
 	OP_QUERY, ///< "?"
 	OP_REDIR, ///< ">"
+	OP_COUNT, ///< "@"
 	IDENT, ///< "[a-zA-Z0-9]+"
 	NUMBER, ///< "[0-9]+
 	EOF_TOKEN, ///< "Koniec pliku."

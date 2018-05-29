@@ -66,6 +66,9 @@ struct RadixTree {
 	/** Odpowiedni wierzchołek z drzewa "to", na który dany wierzchołek
 	 * z "from" jest przekierowany, lub NULL.*/
 	struct RadixTree *fwd;
+
+	unsigned charset;
+	unsigned labelLength;
 };
 
 /**
@@ -134,7 +137,7 @@ isNumber(const char *arg)
 	if (!arg || !*arg)
 		return false;
 	for (; *arg; ++arg) {
-		if (*arg < '0' || *arg > '9') return false;
+		if (*arg < '0' || *arg > ';') return false;
 	}
 	return true;
 }
@@ -142,6 +145,15 @@ isNumber(const char *arg)
 
 ////////////////////////////////////////////////////////////////////////////////
 // Operacje na wierzcholkach
+
+static unsigned charset (const char*);
+void
+setLabel(rt* arg, char *label)
+{
+	arg->label = label;
+	arg->labelLength = label ? strlen(label) : 0;
+	arg->charset = label ? charset(label) : 0;
+}
 
 /**
  * @brief Alokuje nowy wierzchołek drzewa słów.
@@ -153,7 +165,7 @@ makeRT()
 {
 	rt *new = malloc(sizeof(rt));
 	if (!new) return NULL;
-	*new = (rt){new, new, new, new, new, new, NULL, NULL, NULL};
+	*new = (rt){new, new, new, new, new, new, NULL, NULL, NULL, 0, 0};
 	return new;
 }
 
@@ -199,7 +211,7 @@ addAbove (rt *arg, const char* breakpoint)
 	rt *new = makeRT();
 	if (!new) return NULL;
 
-	new->label = copyString(arg->label, breakpoint);
+	setLabel(new, copyString(arg->label, breakpoint));
 	char *argLabel = copyString(breakpoint, NULL);
 	if (!new->label || !argLabel) goto alloc_error;
 
@@ -211,7 +223,7 @@ addAbove (rt *arg, const char* breakpoint)
 	arg->leftSibling = arg->rightSibling = new;
 
 	free(arg->label);
-	arg->label = argLabel;
+	setLabel(arg, argLabel);
 
 	return new;
 
@@ -242,7 +254,7 @@ addLeft(rt *arg, const char *label)
 	new->leftSibling = arg->leftSibling;
 	arg->leftSibling = new;
 	new->rightSibling = arg;
-	new->label = newLabel;
+	setLabel(new, newLabel);
 
 	return new;
 }
@@ -267,7 +279,7 @@ addRight(rt *arg, const char *label)
 	new->rightSibling = arg->rightSibling;
 	arg->rightSibling = new;
 	new->leftSibling = arg;
-	new->label = newLabel;
+	setLabel(new, newLabel);
 
 	return new;
 }
@@ -290,7 +302,7 @@ addBelow(rt *arg, const char *label)
 
 	new->leftSibling = new->rightSibling = arg;
 	arg->leftChild = arg->rightChild = new;
-	new->label = newLabel;
+	setLabel(new, newLabel);
 
 	return new;
 }
@@ -369,7 +381,7 @@ removeFromTree(rt *arg) {
 
 		free(arg->label);
 		free(child->label);
-		child->label = newLabel;
+		setLabel(child, newLabel);
 	}
 	return true;
 }
@@ -825,4 +837,47 @@ phnumDelete(const struct PhoneNumbers *arg)
 	for (size_t i = 0; i < arg->size; ++i)
 		free((void*)arg->data[i]);
 	free((void*)arg);
+}
+
+static unsigned
+charset (const char *arg)
+{
+	unsigned acc = 0;
+	while (*arg) acc |= 1 << (*arg++ - '0');
+	return acc;
+}
+
+static bool
+subset (unsigned sub, unsigned super)
+{
+	return (sub & super) == sub;
+}
+
+static size_t power(size_t base, size_t exp) {
+	size_t ret = 1;
+	while (exp) {ret *= exp%2 ? base : 1; exp /= 2; base *= base;}
+	return ret;
+}
+
+static size_t
+nonTrivialCountRec(rt* arg, unsigned set, size_t len)
+{
+	if (arg->leftRev != arg)
+		return power(12, len);
+
+	size_t ret = 0;
+	for (rt *c = arg->rightChild; c != arg; c = c->rightSibling) {
+		if (subset(c->charset, set) && c->labelLength <= len)
+			ret += nonTrivialCountRec(c, set, len - c->labelLength);
+	}
+	return ret;
+}
+
+#define max(a, b) ((a) > (b) ? (a) : (b))
+
+size_t
+phfwdNonTrivialCount(struct PhoneForward *pf, char const *set, size_t len)
+{
+	if (!pf || !set) return 0;
+	return nonTrivialCountRec(pf->to, charset(set), len);
 }

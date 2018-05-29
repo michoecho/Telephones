@@ -7,6 +7,7 @@
  */
 
 #include <stdio.h>
+#include <string.h>
 #include "scanner.h"
 #include "phone_forward.h"
 #include "symbol_table.h"
@@ -21,6 +22,7 @@ enum commandType {
 	REMOVE, ///< Wywołanie phfwdRemove().
 	GET, ///< Wywołanie phfwdGet() i wypisanie wyniku.
 	REV, ///< Wywołanie phfwdReverse() i wypisanie wyniku.
+	COUNT, ///< Wywołanie phfwdReverse() i wypisanie wyniku.
 	END, ///< Brak dalszych poleceń. Zakończenie programu.
 	OOM_ERROR, ///< Błąd alokacji wewnątrz parsera lub skanera.
 	EOF_ERROR, ///< Nieoczekiwany koniec danych.
@@ -42,6 +44,7 @@ get_op_name(enum commandType t)
 	case REMOVE: return "DEL";
 	case GET:
 	case REV: return "?";
+	case COUNT: return "@";
 	case ADD: return ">";
 	default: return "";
 	}
@@ -113,6 +116,17 @@ getCommand (struct command *out, size_t *count)
 			out->type = REV;
 		} else {
 			out->type = t2.type == OOM_TOKEN ? OOM_ERROR : SYNTAX_ERROR;
+			out->op_offset = t2.beg;
+		}
+		break;
+	case OP_COUNT:
+		out->op_offset = t.beg;
+		getToken(&t2, count);
+		out->operand1 = t2.string;
+		if (t2.type == NUMBER) {
+			out->type = COUNT;
+		} else {
+			out->type = SYNTAX_ERROR;
 			out->op_offset = t2.beg;
 		}
 		break;
@@ -217,12 +231,17 @@ int main()
 		} else if (cmd.type == REMOVE) {
 				phfwdRemove(current, cmd.operand1);
 		} else if (cmd.type == GET) {
-				pn = phfwdGet(current, cmd.operand1);
-				const char *num = phnumGet(pn, 0);
-				if (num)
-					puts(num);
-				else
-					status = ERROR;
+			pn = phfwdGet(current, cmd.operand1);
+			const char *num = phnumGet(pn, 0);
+			if (num)
+				puts(num);
+			else
+				status = ERROR;
+		} else if (cmd.type == COUNT) {
+			size_t len = strlen(cmd.operand1);
+			size_t result = phfwdNonTrivialCount(current, cmd.operand1,
+					len > 12 ? len - 12: 0);
+			printf("%ld\n", result);
 		} else if (cmd.type == REV) {
 			pn = phfwdReverse(current, cmd.operand1);
 			const char *num = phnumGet(pn, 0);
