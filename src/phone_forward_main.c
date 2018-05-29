@@ -241,7 +241,7 @@ int main()
 			size_t len = strlen(cmd.operand1);
 			size_t result = phfwdNonTrivialCount(current, cmd.operand1,
 					len > 12 ? len - 12: 0);
-			printf("%ld\n", result);
+			printf("%zu\n", result);
 		} else if (cmd.type == REV) {
 			pn = phfwdReverse(current, cmd.operand1);
 			const char *num = phnumGet(pn, 0);
