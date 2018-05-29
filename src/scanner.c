@@ -53,7 +53,7 @@ extractWord(int (*class)(int), size_t *count)
 		if (!class(c)) break;
 		buffer[*count - oldCount] = c;
 		++*count;
-		if (*count == cap) {
+		if ((*count - oldCount) == cap) {
 			char *newBuffer = realloc(buffer, (cap *= 2));
 			if (!newBuffer) {free(buffer); return NULL;}
 			buffer = newBuffer;
