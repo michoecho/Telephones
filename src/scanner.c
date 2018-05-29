@@ -17,7 +17,14 @@
 static bool
 discardComment(size_t *count)
 {
-	if ((++*count, getchar()) != '$') return false;
+	++*count;
+	int nextChar = getchar();
+	if (nextChar != '$') {
+		if (nextChar == EOF) clearerr(stdin);
+		--*count;
+		ungetc(nextChar, stdin);
+		return false;
+	}
 	while (true) {
 		switch (++*count, getchar()) {
 		case EOF: return false;
