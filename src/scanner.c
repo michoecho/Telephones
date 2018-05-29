@@ -73,6 +73,12 @@ extractWord(int (*class)(int), size_t *count)
 	return buffer;
 }
 
+static int
+isNumberCustom(int c)
+{
+	return c >= '0' && c <= ';';
+}
+
 void
 getToken(struct token *out, size_t *count)
 {
@@ -103,7 +109,7 @@ getToken(struct token *out, size_t *count)
 		out->type = OP_COUNT;
 	} else if (isdigit(c)) {
 		--*count; ungetc(c, stdin);
-		out->string = extractWord(isdigit, count);
+		out->string = extractWord(isNumberCustom, count);
 		out->type = out->string ? NUMBER : OOM_TOKEN;
 		return;
 	} else if (isalpha(c)) {

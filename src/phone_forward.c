@@ -847,6 +847,17 @@ charset (const char *arg)
 	return acc;
 }
 
+static unsigned
+charset_size (unsigned charset)
+{
+	unsigned acc = 0;
+	while (charset) {
+		acc += (charset & 1);
+		charset >>= 1;
+	}
+	return acc;
+}
+
 static bool
 subset (unsigned sub, unsigned super)
 {
@@ -860,15 +871,15 @@ static size_t power(size_t base, size_t exp) {
 }
 
 static size_t
-nonTrivialCountRec(rt* arg, unsigned set, size_t len)
+nonTrivialCountRec(rt* arg, unsigned set, unsigned set_size, size_t len)
 {
 	if (arg->leftRev != arg)
-		return power(12, len);
+		return power(set_size, len);
 
 	size_t ret = 0;
 	for (rt *c = arg->rightChild; c != arg; c = c->rightSibling) {
 		if (subset(c->charset, set) && c->labelLength <= len)
-			ret += nonTrivialCountRec(c, set, len - c->labelLength);
+			ret += nonTrivialCountRec(c, set, set_size, len - c->labelLength);
 	}
 	return ret;
 }
@@ -879,5 +890,6 @@ size_t
 phfwdNonTrivialCount(struct PhoneForward *pf, char const *set, size_t len)
 {
 	if (!pf || !set) return 0;
-	return nonTrivialCountRec(pf->to, charset(set), len);
+	unsigned char_set = charset(set);
+	return nonTrivialCountRec(pf->to, char_set, charset_size(char_set), len);
 }
