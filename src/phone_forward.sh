@@ -23,9 +23,9 @@ fi
 unneeded=$(wc -l <"$temp_output")
 ((++unneeded))
 rm "$temp_output"
-cat "$temp_in" - <<<"?$3" | $1 2>"$error_log" | tail -n -$unneeded >"$revs"
+cat "$temp_in" - <<<"?$3" | $1 2>"$error_log" | tail -n +$unneeded >"$revs"
 sed "s/$/?/" "$revs" | cat "$temp_in" - | "$1" 2>"$error_log" |
-    tail -n -$unneeded | paste "$revs" - | grep "\s$3$" | cut -f1 >"$output"
+    tail -n +$unneeded | paste "$revs" - | grep "\s$3$" | cut -f1 >"$output"
 
 if [ -s "$error_log" ]; then
     echo -n "Runtime error: " 1>&2
