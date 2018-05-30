@@ -126,7 +126,7 @@ getCommand (struct command *out, size_t *count)
 		if (t2.type == NUMBER) {
 			out->type = COUNT;
 		} else {
-			out->type = SYNTAX_ERROR;
+			out->type = t2.type == OOM_TOKEN ? OOM_ERROR : SYNTAX_ERROR;
 			out->op_offset = t2.beg;
 		}
 		break;
