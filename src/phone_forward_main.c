@@ -88,7 +88,7 @@ getCommand (struct command *out, size_t *count)
 		if (t2.type == IDENT) {
 			out->type = SWITCH;
 		} else {
-			out->type = SYNTAX_ERROR;
+			out->type = t2.type == OOM_TOKEN ? OOM_ERROR : SYNTAX_ERROR;
 			out->op_offset = t2.beg;
 		}
 		break;
@@ -101,7 +101,7 @@ getCommand (struct command *out, size_t *count)
 		} else if (t2.type == NUMBER) {
 			out->type = REMOVE;
 		} else {
-			out->type = SYNTAX_ERROR;
+			out->type = t2.type == OOM_TOKEN ? OOM_ERROR : SYNTAX_ERROR;
 			out->op_offset = t2.beg;
 		}
 		break;
@@ -112,7 +112,7 @@ getCommand (struct command *out, size_t *count)
 		if (t2.type == NUMBER) {
 			out->type = REV;
 		} else {
-			out->type = SYNTAX_ERROR;
+			out->type = t2.type == OOM_TOKEN ? OOM_ERROR : SYNTAX_ERROR;
 			out->op_offset = t2.beg;
 		}
 		break;
@@ -125,7 +125,7 @@ getCommand (struct command *out, size_t *count)
 			if (t3.type == NUMBER) {
 				out->type = ADD;
 			} else {
-				out->type = SYNTAX_ERROR;
+				out->type = t3.type == OOM_TOKEN ? OOM_ERROR : SYNTAX_ERROR;
 				out->op_offset = t3.beg;
 			}
 		} else if (t2.type == OP_QUERY) {
@@ -133,7 +133,7 @@ getCommand (struct command *out, size_t *count)
 			out->operand1 = t.string;
 		} else {
 			out->operand2 = t2.string;
-			out->type = SYNTAX_ERROR;
+			out->type = t2.type == OOM_TOKEN ? OOM_ERROR : SYNTAX_ERROR;
 			out->op_offset = t2.beg;
 		}
 		break;
@@ -249,7 +249,9 @@ int main()
 					cmd.op_offset);
 		}
 	}
-	iterSymbols(table, deleteBase);
-	deleteSymbolTable(table);
+	if (table) {
+		iterSymbols(table, deleteBase);
+		deleteSymbolTable(table);
+	}
 	return !!status;
 }
