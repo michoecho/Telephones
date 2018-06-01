@@ -1,3 +1,11 @@
+/** @file
+ * Implementacja skanera języka wyspecyfikowanego w treści zadania.
+ *
+ * @author Michał Chojnowski <mc394134@students.mimuw.edu.pl>
+ * @copyright Michał Chojnowski
+ * @date 28.05.2018
+ */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
