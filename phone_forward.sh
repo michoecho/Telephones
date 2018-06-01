@@ -23,7 +23,7 @@ fi
 unneeded=$(wc -l <"$temp_output")
 ((++unneeded))
 rm "$temp_output"
-cat "$temp_in" - <<<"?$3" | $1 2>>"$error_log" | tail -n +$unneeded >"$revs"
+cat "$temp_in" - <<<" ?$3" | $1 2>>"$error_log" | tail -n +$unneeded >"$revs"
 sed "s/$/?/" "$revs" | cat "$temp_in" - | "$1" 2>>"$error_log" |
     tail -n +$unneeded | paste "$revs" - | grep "\s$3$" | cut -f1 >"$output"
 
