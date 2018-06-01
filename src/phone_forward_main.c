@@ -29,13 +29,13 @@ enum commandType {
 	SYNTAX_ERROR ///< Błąd składniowy.
 };
 
-static char *
 /** @brief Zwraca nazwę operatora odpowiadającego typowi polecenia @p t.
  *
  * @param t Typ danego polecenia.
  * @return Nazwa operatora lub pusty string,
  * jeśli podany typ polecenia nie odpowiada żadnemu operatorowi.
  */
+static char *
 get_op_name(enum commandType t)
 {
 	switch (t) {
@@ -65,7 +65,6 @@ struct command {
 	size_t op_offset;
 };
 
-static void
 /**
  * @brief Generuje polecenie z tokenów wczytywanych przez getToken().
  * Zwiększa @p count o liczbę wczytanych znaków. Wczytuje tylko te znaki,
@@ -74,7 +73,8 @@ static void
  * @param[out] out Zwracane polecenie.
  * @param[out] count Wskaźnik na licznik wczytanych znaków.
  */
-getCommand (struct command *out, size_t *count)
+static void
+getCommand(struct command *out, size_t *count)
 {
 	struct token t;
 	struct token t2;
@@ -229,7 +229,7 @@ int main()
 			if (!phfwdAdd(current, cmd.operand1, cmd.operand2))
 				status = ERROR;
 		} else if (cmd.type == REMOVE) {
-				phfwdRemove(current, cmd.operand1);
+			phfwdRemove(current, cmd.operand1);
 		} else if (cmd.type == GET) {
 			pn = phfwdGet(current, cmd.operand1);
 			const char *num = phnumGet(pn, 0);

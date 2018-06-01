@@ -23,7 +23,7 @@ struct PhoneNumbers {
  *
  * Każdemu wierzcholkowi drzewa odpowiada dokładnie jedno słowo.
  * Każdy wierzchołek posiada etykietę (label). Słowo, które odpowiada
- * wierzchołkowi jest konkatenacją wszystkich etykiet na ścieżce od korzenia
+ * wierzchołkowi, jest konkatenacją wszystkich etykiet na ścieżce od korzenia
  * do tego wierzchołka włącznie. Etykiety rodzeństwa nie mają wspólnych
  * prefiksów. Rodzeństwo jest posortowane leksykograficznie względem etykiet.
  *
