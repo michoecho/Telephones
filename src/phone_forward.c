@@ -67,7 +67,10 @@ struct RadixTree {
 	 * z "from" jest przekierowany, lub NULL.*/
 	struct RadixTree *fwd;
 
+	/** Zakodowany przez charset() zbiór cyfr w etykiecie. */
 	unsigned charset;
+
+	/** Długość etykiety. */
 	unsigned labelLength;
 };
 
@@ -97,7 +100,7 @@ typedef struct RadixTree rt;
  * kopiowane jest cały string aż do '\0'.
  * @return Wskaźnik na kopię lub NULL w przypadku błędu alokacji.
  */
-char *
+static char *
 copyString (const char *begin, const char *end)
 {
 	size_t len = end ? (size_t)(end - begin) : strlen(begin);
@@ -116,7 +119,7 @@ copyString (const char *begin, const char *end)
  *
  * @return Wskaźnik na kopię lub NULL w przypadku błędu alokacji.
  */
-char *
+static char *
 mergeStrings (const char *prefix, const char *suffix)
 {
 	char *new = malloc(strlen(prefix) + strlen(suffix) + 1);
@@ -127,17 +130,28 @@ mergeStrings (const char *prefix, const char *suffix)
 }
 
 /**
+ * @brief Sprawdza czy podany znak jest cyfrą.
+ *
+ * @param arg Dany znak.
+ */
+static bool
+isDigit(int arg)
+{
+	return (arg >= '0' && arg <= ';');
+}
+
+/**
  * @brief Sprawdza czy string składa się w całości z cyfr.
  *
  * @param arg Dany string.
  */
-bool
+static bool
 isNumber(const char *arg)
 {
 	if (!arg || !*arg)
 		return false;
 	for (; *arg; ++arg) {
-		if (*arg < '0' || *arg > ';') return false;
+		if (!isDigit(*arg)) return false;
 	}
 	return true;
 }
@@ -147,7 +161,14 @@ isNumber(const char *arg)
 // Operacje na wierzcholkach
 
 static unsigned charset (const char*);
-void
+
+/**
+ * @brief Ustawia etykietę wierzchołka.
+ *
+ * @param arg Dany wierzchołek.
+ * @param label Nowa etykieta.
+ */
+static void
 setLabel(rt* arg, char *label)
 {
 	arg->label = label;
@@ -160,7 +181,7 @@ setLabel(rt* arg, char *label)
  *
  * @return Wskaźnik na nowy wierzchołek lub NULL w przypadku błędu alokacji.
  */
-rt *
+static rt *
 makeRT()
 {
 	rt *new = malloc(sizeof(rt));
@@ -175,7 +196,7 @@ makeRT()
  *
  * @param arg Dany wierzchołek.
  */
-rt **
+static rt **
 fromLeftSibling(rt *arg)
 {
 	return arg->leftSibling->rightSibling == arg ?
@@ -188,7 +209,7 @@ fromLeftSibling(rt *arg)
  *
  * @param arg Dany wierzchołek.
  */
-rt **
+static rt **
 fromRightSibling(rt *arg)
 {
 	return arg->rightSibling->leftSibling == arg ?
@@ -205,7 +226,7 @@ fromRightSibling(rt *arg)
  *
  * @return Nowy wierzchołek lub NULL w przypadku błędu alokacji.
  */
-rt *
+static rt *
 addAbove (rt *arg, const char* breakpoint)
 {
 	rt *new = makeRT();
@@ -242,7 +263,7 @@ alloc_error:
  *
  * @return Nowy wierzchołek lub NULL w przypadku błędu alokacji.
  */
-rt *
+static rt *
 addLeft(rt *arg, const char *label)
 {
 	rt *new = makeRT();
@@ -267,7 +288,7 @@ addLeft(rt *arg, const char *label)
  *
  * @return Nowy wierzchołek lub NULL w przypadku błędu alokacji.
  */
-rt *
+static rt *
 addRight(rt *arg, const char *label)
 {
 	rt *new = makeRT();
@@ -292,7 +313,7 @@ addRight(rt *arg, const char *label)
  *
  * @return Nowy wierzchołek lub NULL w przypadku błędu alokacji.
  */
-rt*
+static rt*
 addBelow(rt *arg, const char *label)
 {
 	rt *new = makeRT();
@@ -316,7 +337,7 @@ addBelow(rt *arg, const char *label)
  *
  * @return Określone wyżej dziecko lub NULL w przypadku błędu alokacji.
  */
-rt *
+static rt *
 addChild(rt *arg, const char *label)
 {
 	if (arg->leftChild == arg) {
@@ -342,7 +363,7 @@ addChild(rt *arg, const char *label)
  *
  * @return Określone wyżej dziecko lub NULL jeśli takie dziecko nie istnieje.
  */
-rt *
+static rt *
 selectChild(rt *arg, const char *label)
 {
 	for (rt *c = arg->rightChild; c != arg; c = c->rightSibling) {
@@ -362,7 +383,7 @@ selectChild(rt *arg, const char *label)
  * @return true, jeśli wycinanie się powiodło, lub false, jeśli zostało ono
  * uniemożliwione błędem alokacji.
  */
-bool
+static bool
 removeFromTree(rt *arg) {
 	if (arg->leftChild == arg) {
 		*fromLeftSibling(arg) = arg->rightSibling;
@@ -401,7 +422,7 @@ static inline bool isRoot (rt *arg) {return arg->leftSibling == arg;}
  * @return Rodzic @p arg, jeśli @p arg jest skrajnym dzieckiem
  * i nie jest korzeniem. W przeciwnym razie NULL.
  */
-rt *
+static rt *
 getParent (rt *arg)
 {
 	if (arg->leftSibling->rightSibling != arg)
@@ -422,7 +443,7 @@ getParent (rt *arg)
  *
  * @param arg Podany wierzchołek.
  */
-void
+static void
 cleanup (rt* arg)
 {
 	if (isRoot(arg) || arg->leftRev != arg)
@@ -451,7 +472,8 @@ cleanup (rt* arg)
  * @param src Dodawane słowo z drzewa "from".
  * @param fwd Słowo z drzewa "to".
  */
-void addAsRev(rt *src, rt *fwd)
+static void
+addAsRev(rt *src, rt *fwd)
 {
 	src->leftRev = fwd;
 	src->rightRev = fwd->rightRev;
@@ -465,7 +487,8 @@ void addAsRev(rt *src, rt *fwd)
  *
  * @param src Usuwane słowo z drzewa "from".
  */
-void removeAsRev(rt *src)
+static void
+removeAsRev(rt *src)
 {
 	src->leftRev->rightRev = src->rightRev;
 	src->rightRev->leftRev = src->leftRev;
@@ -485,7 +508,7 @@ void removeAsRev(rt *src)
  * @return Wierzchołek odpowiadający dodawanemu słowu lub NULL w przypadku błędu
  * alokacji.
  */
-rt *
+static rt *
 addKey (rt* arg, const char *key)
 {
 	rt *child = addChild(arg, key);
@@ -514,7 +537,7 @@ addKey (rt* arg, const char *key)
  * @return Korzeń poddrzewa drzewa @p arg o prefiksie @p key, jeśli takie
  * poddrzewo istnieje, lub NULL.
  */
-rt *
+static rt *
 getBranch (rt* arg, const char *key)
 {
 	rt *child = selectChild(arg, key);
@@ -537,7 +560,7 @@ getBranch (rt* arg, const char *key)
  *
  * @param arg Korzeń usuwanego poddrzewa.
  */
-void
+static void
 removeBranchRec (rt* arg)
 {
 	if (arg->fwd != NULL) {
@@ -564,7 +587,7 @@ removeBranchRec (rt* arg)
  * @param arg Korzeń drzewa "from".
  * @param prefix Prefix, którego wszystkie rozwinięcia mają zostać usunięte.
  */
-void
+static void
 removeBranch (rt* arg, const char *prefix)
 {
 	rt *root = getBranch(arg, prefix);
@@ -581,7 +604,7 @@ removeBranch (rt* arg, const char *prefix)
  *
  * @param arg Korzeń usuwanego drzewa.
  */
-void
+static void
 deleteRec (rt *arg) {
 	for (rt *c = arg->rightChild; c != arg;) {
 		rt *tmp = c->rightSibling;
@@ -604,7 +627,7 @@ deleteRec (rt *arg) {
  *
  * @return Nowe drzewo sortujące lub NULL w przypadku błędu alokacji.
  */
-rt *
+static rt *
 makeSorter(const char *key)
 {
 	rt *sorter = makeRT();
@@ -625,7 +648,7 @@ makeSorter(const char *key)
  * @param arg Drzewo do wypisania.
  * @param[out] p Struktura, do której drzewo jest wypisywane.
  */
-void
+static void
 prefixOrder(rt *arg, struct PhoneNumbers *p)
 {
 	if (arg->fullWord)
@@ -636,13 +659,13 @@ prefixOrder(rt *arg, struct PhoneNumbers *p)
 
 }
 
-void
 /**
  * @brief Usuwa drzewo sortujące.
  *
  * @param arg Usuwane drzewo sortujące.
  * @see prefixOrder
  */
+static void
 deleteSorter (rt *arg) {
 	for (rt *c = arg->rightChild; c != arg;) {
 		rt *tmp = c->rightSibling;
@@ -679,7 +702,8 @@ alloc_error_1:
 	return NULL;
 }
 
-void phfwdDelete(struct PhoneForward *arg)
+void
+phfwdDelete(struct PhoneForward *arg)
 {
 	if (!arg)
 		return;
@@ -710,7 +734,8 @@ phfwdAdd(struct PhoneForward *arg, char const *num1, char const *num2)
 	return true;
 }
 
-void phfwdRemove(struct PhoneForward *arg, const char *key)
+void
+phfwdRemove(struct PhoneForward *arg, const char *key)
 {
 	if (!arg) return;
 	if (!isNumber(key))
@@ -771,7 +796,7 @@ phfwdGet(struct PhoneForward *argpf, char const *key)
  * @return Zaktualizowana liczba słów w @p acc. Jeśli wystąpił błąd alokacji,
  * zwraca -1.
  */
-int
+static int
 reverseRev(rt *arg, const char *key, rt *acc, size_t counter) {
 	for (rt *r = arg->rightRev; r != arg; r = r->rightRev) {
 		char *combined = mergeStrings(r->fullWord, key);
@@ -839,14 +864,34 @@ phnumDelete(const struct PhoneNumbers *arg)
 	free((void*)arg);
 }
 
+
+/**
+ * @brief Zwraca zbiór cyfr w napisie zakodowany w formie bitowej.
+ * n-ty najmniej znaczący bit w wyniku jest zapalony wtedy i tylko wtedy,
+ * gdy n-ta cyfra należy do @p arg.
+ *
+ * @param arg Dany napis.
+ *
+ * @return Zakodowany zbiór cyfr należacych do @p arg.
+ */
 static unsigned
 charset (const char *arg)
 {
 	unsigned acc = 0;
-	while (*arg) acc |= 1 << (*arg++ - '0');
+	while (*arg) {
+		if (isDigit(*arg)) acc |= 1 << (*arg - '0');
+		++arg;
+	}
 	return acc;
 }
 
+/**
+ * @brief Zwraca moc zbioru cyfr zakodowanego przez charset().
+ *
+ * @param charset Zakodowany przez charset() zbiór cyfr.
+ *
+ * @return Moc zbioru @p charset.
+ */
 static unsigned
 charset_size (unsigned charset)
 {
@@ -858,18 +903,48 @@ charset_size (unsigned charset)
 	return acc;
 }
 
+/**
+ * @brief Sprawdza, czy @p sub jest podzbiorem @p super
+ *
+ * @param sub Zbiór zakodowany przez charset().
+ * @param super Zbiór zakodowany przez charset().
+ */
 static bool
 subset (unsigned sub, unsigned super)
 {
 	return (sub & super) == sub;
 }
 
-static size_t power(size_t base, size_t exp) {
+
+/**
+ * @brief Funkcja potęgująca.
+ *
+ * @param base Podstawa.
+ * @param exp Wykładnik.
+ *
+ * @return Wynik potęgowania @p base do @p exp.
+ */
+static size_t
+power(size_t base, size_t exp)
+{
 	size_t ret = 1;
 	while (exp) {ret *= exp%2 ? base : 1; exp /= 2; base *= base;}
 	return ret;
 }
 
+
+/**
+ * @brief Pomocnicza funkcja rekurencyjna dla phfwdNonTrivialCount().
+ * Wyznacza liczbę nietrywialnych numerów, takich że zbiór ich cyfr
+ * jest podzbiorem @p set, a długość wynosi @p len.
+ *
+ * @param arg Drzewo "to", na którym oparte są obliczenia.
+ * @param set Zakodowany przez charset() zbiór cyfr.
+ * @param set_size Moc zbioru @p set
+ * @param len Zadana długość nietrywialnych numerów.
+ *
+ * @return Liczba numerów o zadanych własnościach.
+ */
 static size_t
 nonTrivialCountRec(rt* arg, unsigned set, unsigned set_size, size_t len)
 {
@@ -884,12 +959,10 @@ nonTrivialCountRec(rt* arg, unsigned set, unsigned set_size, size_t len)
 	return ret;
 }
 
-#define max(a, b) ((a) > (b) ? (a) : (b))
-
 size_t
 phfwdNonTrivialCount(struct PhoneForward *pf, char const *set, size_t len)
 {
-	if (!pf || !set) return 0;
+	if (!pf || !set || !len) return 0;
 	unsigned char_set = charset(set);
 	return nonTrivialCountRec(pf->to, char_set, charset_size(char_set), len);
 }

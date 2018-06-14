@@ -1,4 +1,4 @@
-#/bin/bash
+#!/bin/bash
 # Skrypt przyjmuje jako poprawny argument $2 dowolny tekst,
 # który po dodaniu na początku linii "NEW A" jest poprawnym programem w języku
 # phone_forward, który po wykonaniu wszystkich instrukcji posiada obecną bazę.
@@ -9,9 +9,9 @@ output=$(mktemp)
 temp_output=$(mktemp)
 error_log=$(mktemp)
 
-if ! [ -x $1 ]; then echo "Program '$1' not found."; exit 1; fi
-if ! [ -r $2 ]; then echo "Input file '$2' unavailable."; exit 1; fi
-if ! [[ "$3" =~ ^[0-9]+$ ]]; then echo "'$3' is not a number."; exit 1; fi
+if ! [ -x $1 ]; then echo "Program '$1' not found." 1>&2; exit 1; fi
+if ! [ -r $2 ]; then echo "Input file '$2' unavailable." 1>&2; exit 1; fi
+if ! [[ "$3" =~ ^[0-9]+$ ]]; then echo "'$3' is not a number." 1>&2; exit 1; fi
 
 cat - "$2" <<<"NEW A" >"$temp_in"
 if ! "$1" <"$temp_in" >"$temp_output" 2>"$error_log"; then

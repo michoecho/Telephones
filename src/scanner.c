@@ -81,8 +81,13 @@ extractWord(int (*class)(int), size_t *count)
 	return buffer;
 }
 
+/**
+ * @brief Sprawdza czy podany znak jest cyfrą.
+ *
+ * @param c Dany znak.
+ */
 static int
-isNumber(int c)
+isDigit(int c)
 {
 	return c >= '0' && c <= ';';
 }
@@ -115,9 +120,9 @@ getToken(struct token *out, size_t *count)
 		out->type = OP_QUERY;
 	} else if (c == '@') {
 		out->type = OP_COUNT;
-	} else if (isNumber(c)) {
+	} else if (isDigit(c)) {
 		--*count; ungetc(c, stdin);
-		out->string = extractWord(isNumber, count);
+		out->string = extractWord(isDigit, count);
 		out->type = out->string ? NUMBER : OOM_TOKEN;
 		return;
 	} else if (isalpha(c)) {
